@@ -9,7 +9,7 @@ import torch.nn as nn
 
 class Flatten(nn.Module):
     """A custom layer that views an input as 1D."""
-    
+
     def forward(self, input):
         return input.view(input.size(0), -1)
 
@@ -35,28 +35,31 @@ def compute_accuracy(predictions, y):
     return np.mean(np.equal(predictions.numpy(), y.numpy()))
 
 
-def train_model(train_data, dev_data, model, lr=0.01, momentum=0.9, nesterov=False, n_epochs=30):
+def train_model(train_data, dev_data, model, lr=0.001, n_epochs=30):
     """Train a model for N epochs given data and hyper-params."""
-    # We optimize with SGD
-    optimizer = torch.optim.adam(model.parameters(), lr=lr, momentum=momentum, nesterov=nesterov)
+    # We optimize with Adam
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     for epoch in range(1, n_epochs + 1):
         print("-------------\nEpoch {}:\n".format(epoch))
 
-        # Run **training***
+        # Run **training**
         loss, acc = run_epoch(train_data, model.train(), optimizer)
-        print('Train | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(loss[0], acc[0], loss[1], acc[1]))
+        print('Train | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(
+            loss[0], acc[0], loss[1], acc[1]))
 
-        # Run **validation**
-        val_loss, val_acc = run_epoch(dev_data, model.eval(), optimizer)
-        print('Valid | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(val_loss[0], val_acc[0], val_loss[1], val_acc[1]))
+        # Run **validation** (no optimizer — inference only)
+        with torch.no_grad():
+            val_loss, val_acc = run_epoch(dev_data, model.eval(), None)
+        print('Valid | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(
+            val_loss[0], val_acc[0], val_loss[1], val_acc[1]))
 
         # Save model
         torch.save(model, 'mnist_model_fully_connected.pt')
 
 
 def run_epoch(data, model, optimizer):
-    """Train model for one pass of train data, and return loss, acccuracy"""
+    """Train model for one pass of train data, and return loss, accuracy."""
     # Gather losses
     losses_first_label = []
     losses_second_label = []
@@ -83,8 +86,8 @@ def run_epoch(data, model, optimizer):
         # Compute both losses
         loss1 = F.cross_entropy(out1, y[0])
         loss2 = F.cross_entropy(out2, y[1])
-        losses_first_label.append(loss1.data.item())
-        losses_second_label.append(loss2.data.item())
+        losses_first_label.append(loss1.item())
+        losses_second_label.append(loss2.item())
 
         # If training, do an update.
         if is_training:

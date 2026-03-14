@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from train_utils import batchify_data, run_epoch, train_model, Flatten
 import utils_multiMNIST as U
+
 path_to_data_dir = '../Datasets/'
 use_mini_dataset = True
 
@@ -11,7 +12,7 @@ batch_size = 64
 nb_classes = 10
 nb_epoch = 30
 num_classes = 10
-img_rows, img_cols = 42, 28 # input image dimensions
+img_rows, img_cols = 42, 28  # input image dimensions
 
 
 class MLP(nn.Module):
@@ -20,9 +21,9 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.flatten = Flatten()
         self.fc1 = nn.Linear(input_dimension, 64)
-        self.fc2 = nn.Linear(64,10)
+        self.fc2 = nn.Linear(64, 10)
         self.fc3 = nn.Linear(input_dimension, 64)
-        self.fc4 = nn.Linear(64,10)
+        self.fc4 = nn.Linear(64, 10)
 
     def forward(self, x):
         xf = x.view(x.size(0), -1)
@@ -31,8 +32,9 @@ class MLP(nn.Module):
         out_first_digit = self.fc2(x1)
         x2 = self.fc3(xf)
         out_second_digit = self.fc4(x2)
-        
+
         return out_first_digit, out_second_digit
+
 
 def main():
     X_train, y_train, X_test, y_test = U.get_data(path_to_data_dir, use_mini_dataset)
@@ -56,17 +58,21 @@ def main():
 
     # Load model
     input_dimension = img_rows * img_cols
-    model = MLP(input_dimension) # TODO add proper layers to MLP class above
+    model = MLP(input_dimension)
 
     # Train
     train_model(train_batches, dev_batches, model)
 
-    ## Evaluate the model on test data
-    loss, acc = run_epoch(test_batches, model.eval(), None)
-    print('Test loss1: {:.6f}  accuracy1: {:.6f}  loss2: {:.6f}   accuracy2: {:.6f}'.format(loss[0], acc[0], loss[1], acc[1]))
+    # Evaluate the model on test data
+    model.eval()
+    with torch.no_grad():
+        loss, acc = run_epoch(test_batches, model, None)
+    print('Test loss1: {:.6f}  accuracy1: {:.6f}  loss2: {:.6f}   accuracy2: {:.6f}'.format(
+        loss[0], acc[0], loss[1], acc[1]))
+
 
 if __name__ == '__main__':
-    # Specify seed for deterministic behavior, then shuffle. Do not change seed for official submissions to edx
-    np.random.seed(12321)  # for reproducibility
-    torch.manual_seed(12321)  # for reproducibility
+    # Specify seed for deterministic behavior, then shuffle.
+    np.random.seed(12321)
+    torch.manual_seed(12321)
     main()
