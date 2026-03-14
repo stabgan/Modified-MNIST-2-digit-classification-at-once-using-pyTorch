@@ -38,7 +38,7 @@ def compute_accuracy(predictions, y):
 def train_model(train_data, dev_data, model, lr=0.01, momentum=0.9, nesterov=False, n_epochs=30):
     """Train a model for N epochs given data and hyper-params."""
     # We optimize with SGD
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, nesterov=nesterov)
+    optimizer = torch.optim.adam(model.parameters(), lr=lr, momentum=momentum, nesterov=nesterov)
 
     for epoch in range(1, n_epochs + 1):
         print("-------------\nEpoch {}:\n".format(epoch))
@@ -48,7 +48,7 @@ def train_model(train_data, dev_data, model, lr=0.01, momentum=0.9, nesterov=Fal
         print('Train | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(loss[0], acc[0], loss[1], acc[1]))
 
         # Run **validation**
-        val_loss, val_acc = run_epoch(dev_data, model.eval(), None)
+        val_loss, val_acc = run_epoch(dev_data, model.eval(), optimizer)
         print('Valid | loss1: {:.6f}  accuracy1: {:.6f} | loss2: {:.6f}  accuracy2: {:.6f}'.format(val_loss[0], val_acc[0], val_loss[1], val_acc[1]))
 
         # Save model
@@ -71,43 +71,27 @@ def run_epoch(data, model, optimizer):
         # Grab x and y
         x, y = batch['x'], batch['y']
 
+        # Get output predictions for both the upper and lower numbers
+        out1, out2 = model(x)
+
+        # Predict and store accuracy
+        predictions_first_label = torch.argmax(out1, dim=1)
+        predictions_second_label = torch.argmax(out2, dim=1)
+        batch_accuracies_first.append(compute_accuracy(predictions_first_label, y[0]))
+        batch_accuracies_second.append(compute_accuracy(predictions_second_label, y[1]))
+
+        # Compute both losses
+        loss1 = F.cross_entropy(out1, y[0])
+        loss2 = F.cross_entropy(out2, y[1])
+        losses_first_label.append(loss1.data.item())
+        losses_second_label.append(loss2.data.item())
+
+        # If training, do an update.
         if is_training:
-            # Get output predictions for both the upper and lower numbers
-            out1, out2 = model(x)
-
-            # Predict and store accuracy
-            predictions_first_label = torch.argmax(out1, dim=1)
-            predictions_second_label = torch.argmax(out2, dim=1)
-            batch_accuracies_first.append(compute_accuracy(predictions_first_label, y[0]))
-            batch_accuracies_second.append(compute_accuracy(predictions_second_label, y[1]))
-
-            # Compute both losses
-            loss1 = F.cross_entropy(out1, y[0])
-            loss2 = F.cross_entropy(out2, y[1])
-            losses_first_label.append(loss1.item())
-            losses_second_label.append(loss2.item())
-
-            # Training update
             optimizer.zero_grad()
             joint_loss = 0.5 * (loss1 + loss2)
             joint_loss.backward()
             optimizer.step()
-        else:
-            with torch.no_grad():
-                # Get output predictions for both the upper and lower numbers
-                out1, out2 = model(x)
-
-                # Predict and store accuracy
-                predictions_first_label = torch.argmax(out1, dim=1)
-                predictions_second_label = torch.argmax(out2, dim=1)
-                batch_accuracies_first.append(compute_accuracy(predictions_first_label, y[0]))
-                batch_accuracies_second.append(compute_accuracy(predictions_second_label, y[1]))
-
-                # Compute both losses
-                loss1 = F.cross_entropy(out1, y[0])
-                loss2 = F.cross_entropy(out2, y[1])
-                losses_first_label.append(loss1.item())
-                losses_second_label.append(loss2.item())
 
     # Calculate epoch level scores
     avg_loss = np.mean(losses_first_label), np.mean(losses_second_label)

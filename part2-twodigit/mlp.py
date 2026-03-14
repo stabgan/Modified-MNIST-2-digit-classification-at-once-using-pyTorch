@@ -62,8 +62,7 @@ def main():
     train_model(train_batches, dev_batches, model)
 
     ## Evaluate the model on test data
-    model.eval()
-    loss, acc = run_epoch(test_batches, model, None)
+    loss, acc = run_epoch(test_batches, model.eval(), None)
     print('Test loss1: {:.6f}  accuracy1: {:.6f}  loss2: {:.6f}   accuracy2: {:.6f}'.format(loss[0], acc[0], loss[1], acc[1]))
 
 if __name__ == '__main__':
