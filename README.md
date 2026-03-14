@@ -1,15 +1,94 @@
-# Digit recognition of 2digits at once - a modified MNIST hand written digit dataset
+# Modified MNIST — Two-Digit Classification with PyTorch
 
-### This is the 3rd project I made during MITx Micromasters
+Simultaneous recognition of two handwritten digits from a single image using deep learning. Built with PyTorch, this project achieves **97%+ accuracy** on a modified MNIST dataset where each sample contains two vertically stacked digits.
 
-## Sample pics :
-![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20000.jpg) ![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20002.jpg) ![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20004.jpg) ![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20004.jpg) ![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20010.jpg)
+## Sample Images
 
-1) I implemented a normal *Multilayer Perceptron* to train a basic model first which paralelly trains two models during forward propagation .
-2) I implemented a *Convolutional Neural Network* using pyTorch and parallely trained two neural nets for recognizing two digits in a sample pic and then used cross_entropy loss individually for both of them and used Adam optimiser to train the model .
+![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20000.jpg)
+![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20002.jpg)
+![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20004.jpg)
+![](https://raw.githubusercontent.com/stabgan/Modified-MNIST-2-digit-classification-at-once-using-pyTorch/master/part2-twodigit/sample_images/img20010.jpg)
 
-There are 30 epochs and each epoch takes around 1 min to train in macbook air 2015 model without CUDA .
-The model converges close to 97.42% as I used Dropout in many layers to avoid overfitting . Without Droupout the model converges above 98% .
+## Architecture
 
-![Screenshot 2019-07-30 at 12 13 19 PM](https://user-images.githubusercontent.com/20128859/62106679-756dae80-b2c3-11e9-94cc-2cd63c99b7ae.png)
+Two parallel neural network heads share a common input and are trained jointly using a combined cross-entropy loss.
 
+### MLP (`mlp.py`)
+- Flatten → FC(1176, 64) → FC(64, 10) (digit 1)
+- Flatten → FC(1176, 64) → FC(64, 10) (digit 2)
+
+### CNN (`conv.py`)
+- Two independent convolutional pipelines, each with:
+  - Conv2d(1→32) → MaxPool → Dropout(0.4)
+  - Conv2d(32→32) → MaxPool → Dropout(0.2)
+  - Conv2d(32→64) → MaxPool → Dropout(0.1)
+  - FC(192→256) → Dropout → FC(256→10)
+- Dropout regularization prevents overfitting (~97.4% with dropout, 98%+ without)
+
+### Training
+- Joint loss: `0.5 * (loss_digit1 + loss_digit2)`
+- Optimizer: SGD with momentum
+- Epochs: 30
+- Batch size: 64
+- Proper `model.eval()` + `torch.no_grad()` for validation/test inference
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| 🧠 Framework | PyTorch |
+| 🐍 Language | Python 3 |
+| 📊 Data | NumPy |
+| 📈 Progress | tqdm |
+| 🗜️ Serialization | gzip + pickle |
+
+## Dependencies
+
+```
+torch
+numpy
+tqdm
+```
+
+Install with:
+
+```bash
+pip install torch numpy tqdm
+```
+
+## How to Run
+
+1. Place the dataset files in a `Datasets/` directory one level above the project root:
+   ```
+   Datasets/
+   ├── train_multi_digit_mini.pkl.gz
+   ├── test_multi_digit_mini.pkl.gz
+   ├── train_labels_mini.txt.gz
+   └── test_labels_mini.txt.gz
+   ```
+
+2. Train the CNN model:
+   ```bash
+   cd part2-twodigit
+   python conv.py
+   ```
+
+3. Or train the MLP model:
+   ```bash
+   cd part2-twodigit
+   python mlp.py
+   ```
+
+Set `use_mini_dataset = False` in the script to train on the full dataset (remove `_mini` suffix from filenames).
+
+## Known Issues
+
+- Dataset files are not included in this repo — you need to source them separately (MITx MicroMasters course material).
+- The `__pycache__` directory is committed to the repo.
+- `utils_multiMNIST.py` uses `_pickle` directly; consider using `pickle` for better compatibility.
+- Input image dimensions are hardcoded to 42×28.
+- The saved model path (`mnist_model_fully_connected.pt`) is hardcoded and overwrites on each epoch.
+
+## License
+
+See [LICENSE](LICENSE) for details.
